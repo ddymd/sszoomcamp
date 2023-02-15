@@ -4,7 +4,7 @@ from datetime import timedelta
 import pandas as pd
 from pathlib import Path
 from prefect_gcp.cloud_storage import GcsBucket
-
+from prefect_gcp import GcpCredentials
 
 @task(log_prints=True, retries=3, cache_key_fn=task_input_hash, cache_expiration=timedelta(days=1))
 def fetch(url: str) -> pd.DataFrame:
@@ -29,6 +29,11 @@ def write_local(df: pd.DataFrame, color: str, dataset_file: str) -> Path:
 
 @task(log_prints=True)
 def write_to_gcs(path: Path) -> None:
+    account_file = Path(f"zoomcampbq-service_account.json")
+    # GcpCredentials(service_account_info=account).save(name='ss-gcs')
+    GcpCredentials(service_account_file=account_file).save(name='ss-gcs', overwrite=True)
+    gcp_credential = GcpCredentials.load("ss-gcs")
+    GcsBucket(bucket='ss-bucket', gcp_credentials=gcp_credential).save(name='ss-gcs', overwrite=True)
     gcp_bucket_block = GcsBucket.load("ss-gcs")
     gcp_bucket_block.upload_from_path(from_path=path, to_path=f"{path}")
 
